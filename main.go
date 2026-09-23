@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,11 +13,18 @@ type result struct {
 	err  error
 }
 
-func getStatusToUrl(url string, ch chan result) {
+func getStatusToUrl(url string, ch chan result, ctx context.Context) {
 
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		ch <- result{
+			url: url,
+			err: err,
+		}
+		return
+	}
 
-	// Обработка ошибки
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		ch <- result{
 			url: url,
@@ -35,25 +43,31 @@ func getStatusToUrl(url string, ch chan result) {
 func main() {
 	ch := make(chan result)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	urls := os.Args[1:]
 
 	for _, url := range urls {
-		go getStatusToUrl(url, ch)
+		go getStatusToUrl(url, ch, ctx)
 	}
 
 	for i := 0; i < len(urls); i++ {
-		result := <-ch
+		currentResult := <-ch
 
-		if result.err != nil {
-			fmt.Println("Ошибка: ", result.err)
+		if currentResult.err != nil {
+			fmt.Println("Ошибка: ", currentResult.err)
 			continue
 		}
 
-		fmt.Println("Первым ответил: ", result.url)
-		fmt.Println("Status: ", result.resp.Status)
+		fmt.Println("Первым ответил: ", currentResult.url)
+		fmt.Println("Status: ", currentResult.resp.Status)
 
-		result.resp.Body.Close()
+		cancel()
+
+		currentResult.resp.Body.Close()
 		return
 	}
 
+	fmt.Println("Все запросы завершились ошибкой")
 }
