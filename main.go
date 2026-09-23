@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -41,16 +42,40 @@ func getStatusToUrl(url string, ch chan result, ctx context.Context) {
 
 }
 
+func printHelp() {
+	fmt.Printf(`
+	Использование:
+	   hedgedcurl [options] [urls...]
+
+	Опции:
+	   -t, --timeout SECONDS таймаут запросов(по умол 15 секунд)
+	   -h, --help            показать команды
+	`)
+}
+
 func main() {
 
 	var timeout int
+	var help bool
 
 	flag.IntVar(&timeout, "t", 15, "таймаут в секундах")
 	flag.IntVar(&timeout, "timeout", 15, "таймаут в секундах")
+	flag.BoolVar(&help, "h", false, "показать команды")
+	flag.BoolVar(&help, "help", false, "показать команды")
 
 	flag.Parse()
 
+	if help {
+		printHelp()
+		return
+	}
+
 	urls := flag.Args()
+
+	if len(urls) == 0 {
+		fmt.Println("Ошибка! Укажите хотя бы один URL")
+		return
+	}
 
 	ch := make(chan result, len(urls))
 
@@ -58,7 +83,6 @@ func main() {
 		context.Background(),
 		time.Duration(timeout)*time.Second,
 	)
-	defer cancel()
 
 	for _, url := range urls {
 		go getStatusToUrl(url, ch, ctx)
@@ -82,7 +106,8 @@ func main() {
 
 		case <-ctx.Done():
 			fmt.Println("Время закончилось")
-			return
+			cancel()
+			os.Exit(228)
 		}
 	}
 
