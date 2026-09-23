@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 )
 
 type result struct {
@@ -43,7 +44,10 @@ func getStatusToUrl(url string, ch chan result, ctx context.Context) {
 func main() {
 	ch := make(chan result)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		15*time.Second,
+	)
 	defer cancel()
 
 	urls := os.Args[1:]
@@ -53,20 +57,25 @@ func main() {
 	}
 
 	for i := 0; i < len(urls); i++ {
-		currentResult := <-ch
+		select {
+		case currentResult := <-ch:
+			if currentResult.err != nil {
+				fmt.Println("Ошибка: ", currentResult.err)
+				continue
+			}
 
-		if currentResult.err != nil {
-			fmt.Println("Ошибка: ", currentResult.err)
-			continue
+			fmt.Println("Первым ответил: ", currentResult.url)
+			fmt.Println("Status: ", currentResult.resp.Status)
+
+			cancel()
+
+			currentResult.resp.Body.Close()
+			return
+
+		case <-ctx.Done():
+			fmt.Println("Время закончилось")
+			return
 		}
-
-		fmt.Println("Первым ответил: ", currentResult.url)
-		fmt.Println("Status: ", currentResult.resp.Status)
-
-		cancel()
-
-		currentResult.resp.Body.Close()
-		return
 	}
 
 	fmt.Println("Все запросы завершились ошибкой")
