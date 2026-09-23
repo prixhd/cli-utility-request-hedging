@@ -6,30 +6,54 @@ import (
 	"os"
 )
 
-func getStatusToUrl(url string, ch chan string) {
+type result struct {
+	url  string
+	resp *http.Response
+	err  error
+}
+
+func getStatusToUrl(url string, ch chan result) {
 
 	resp, err := http.Get(url)
 
 	// Обработка ошибки
 	if err != nil {
-		fmt.Println(err)
+		ch <- result{
+			url: url,
+			err: err,
+		}
 		return
 	}
-	defer resp.Body.Close()
 
-	ch <- url
+	ch <- result{
+		url:  url,
+		resp: resp,
+	}
 
 }
 
 func main() {
-	ch := make(chan string)
+	ch := make(chan result)
 
 	urls := os.Args[1:]
 
 	for _, url := range urls {
 		go getStatusToUrl(url, ch)
-
 	}
-	firstURL := <-ch
-	fmt.Println("Первым ответил: ", firstURL)
+
+	for i := 0; i < len(urls); i++ {
+		result := <-ch
+
+		if result.err != nil {
+			fmt.Println("Ошибка: ", result.err)
+			continue
+		}
+
+		fmt.Println("Первым ответил: ", result.url)
+		fmt.Println("Status: ", result.resp.Status)
+
+		result.resp.Body.Close()
+		return
+	}
+
 }
