@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -75,8 +76,20 @@ func main() {
 			fmt.Println("Первым ответил: ", currentResult.url)
 			fmt.Println("Status: ", currentResult.resp.Status)
 
-			cancel()
+			for key, values := range currentResult.resp.Header {
+				for _, value := range values {
+					fmt.Printf("%s: %s\n", key, value)
+				}
+			}
 
+			fmt.Println()
+
+			_, err := io.Copy(os.Stdout, currentResult.resp.Body)
+			if err != nil {
+				fmt.Println("Ошибка при чтении body: ", err)
+			}
+
+			cancel()
 			currentResult.resp.Body.Close()
 			return
 
