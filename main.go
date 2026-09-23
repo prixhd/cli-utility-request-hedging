@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 )
 
-func getStatusToUrl(url string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func getStatusToUrl(url string, ch chan string) {
 
 	resp, err := http.Get(url)
 
@@ -19,26 +17,19 @@ func getStatusToUrl(url string, wg *sync.WaitGroup) {
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("URL: ", url)
-	fmt.Println("Status: ", resp.Status)
-
-	for key, values := range resp.Header {
-		for _, value := range values {
-			fmt.Printf("%s: %s\n", key, value)
-		}
-	}
+	ch <- url
 
 }
 
 func main() {
-	var wg sync.WaitGroup
+	ch := make(chan string)
+
 	urls := os.Args[1:]
-	wg.Add(len(urls))
 
 	for _, url := range urls {
-		go getStatusToUrl(url, &wg)
+		go getStatusToUrl(url, ch)
 
 	}
-
-	wg.Wait()
+	firstURL := <-ch
+	fmt.Println("Первым ответил: ", firstURL)
 }
