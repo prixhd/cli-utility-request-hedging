@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -42,15 +42,23 @@ func getStatusToUrl(url string, ch chan result, ctx context.Context) {
 }
 
 func main() {
-	ch := make(chan result)
+
+	var timeout int
+
+	flag.IntVar(&timeout, "t", 15, "таймаут в секундах")
+	flag.IntVar(&timeout, "timeout", 15, "таймаут в секундах")
+
+	flag.Parse()
+
+	urls := flag.Args()
+
+	ch := make(chan result, len(urls))
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		15*time.Second,
+		time.Duration(timeout)*time.Second,
 	)
 	defer cancel()
-
-	urls := os.Args[1:]
 
 	for _, url := range urls {
 		go getStatusToUrl(url, ch, ctx)
