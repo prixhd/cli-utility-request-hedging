@@ -57,12 +57,12 @@ func getStatusToUrl(url string, ch chan result, ctx context.Context) {
 
 func printHelp() {
 	fmt.Print(`Использование:
-	hedgedcurl [options] [urls...]
+hedgedcurl [options] [urls...]
 
-	Опции:
-	-t, --timeout SECONDS   таймаут запросов (по умолчанию 15 секунд)
-	-h, --help              показать помощь
-	`)
+Опции:
+-t, --timeout SECONDS   таймаут запросов (по умолчанию 15 секунд)
+-h, --help              показать помощь
+`)
 }
 
 func printRes(res result) {
