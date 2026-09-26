@@ -53,6 +53,27 @@ func printHelp() {
 	`)
 }
 
+func printRes(res result) {
+	defer res.resp.Body.Close()
+
+	fmt.Println("Первым ответил:", res.url)
+	fmt.Println("Status:", res.resp.Status)
+
+	for key, values := range res.resp.Header {
+		for _, value := range values {
+			fmt.Printf("%s: %s\n", key, value)
+		}
+	}
+
+	fmt.Println()
+
+	_, err := io.Copy(os.Stdout, res.resp.Body)
+	if err != nil {
+		fmt.Println("Ошибка при чтении body:", err)
+	}
+
+}
+
 func main() {
 
 	var timeout int
@@ -98,30 +119,27 @@ func main() {
 				continue
 			}
 
-			fmt.Println("Первым ответил: ", currentResult.url)
-			fmt.Println("Status: ", currentResult.resp.Status)
-
-			for key, values := range currentResult.resp.Header {
-				for _, value := range values {
-					fmt.Printf("%s: %s\n", key, value)
-				}
-			}
-
-			fmt.Println()
-
-			_, err := io.Copy(os.Stdout, currentResult.resp.Body)
-			if err != nil {
-				fmt.Println("Ошибка при чтении body: ", err)
-			}
-
 			cancel()
-			currentResult.resp.Body.Close()
+			printRes(currentResult)
 			return
 
 		case <-ctx.Done():
-			fmt.Println("Время закончилось")
-			cancel()
-			os.Exit(228)
+			// После того как сработал таймаут, мы проверяем полностью канал на результат - был ли там поставлен успешный ответ в канал перед таймаутом или нет
+			for {
+				select {
+				case currentResult := <-ch:
+					if currentResult.err == nil {
+						cancel()
+						printRes(currentResult)
+						return
+					}
+				default:
+					fmt.Println("Время закончилось")
+					cancel()
+					os.Exit(228)
+				}
+			}
+
 		}
 	}
 
