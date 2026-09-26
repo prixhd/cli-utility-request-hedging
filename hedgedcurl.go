@@ -101,6 +101,11 @@ func main() {
 		return
 	}
 
+	if timeout <= 0 {
+		fmt.Println("Ошибка! Таймаут должен быть больше 0 секунд")
+		os.Exit(1)
+	}
+
 	urls := flag.Args()
 
 	if len(urls) == 0 {
