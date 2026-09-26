@@ -75,7 +75,7 @@ func main() {
 
 	if len(urls) == 0 {
 		fmt.Println("Ошибка! Укажите хотя бы один URL")
-		return
+		os.Exit(1)
 	}
 
 	ch := make(chan result, len(urls))
