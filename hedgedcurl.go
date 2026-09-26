@@ -11,13 +11,14 @@ import (
 )
 
 type result struct {
-	url  string
-	resp *http.Response
-	err  error
+	url    string
+	status string
+	header http.Header
+	body   []byte
+	err    error
 }
 
 func getStatusToUrl(url string, ch chan result, ctx context.Context) {
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		ch <- result{
@@ -35,12 +36,23 @@ func getStatusToUrl(url string, ch chan result, ctx context.Context) {
 		}
 		return
 	}
+	defer resp.Body.Close()
 
-	ch <- result{
-		url:  url,
-		resp: resp,
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		ch <- result{
+			url: url,
+			err: err,
+		}
+		return
 	}
 
+	ch <- result{
+		url:    url,
+		status: resp.Status,
+		header: resp.Header,
+		body:   body,
+	}
 }
 
 func printHelp() {
@@ -54,12 +66,10 @@ func printHelp() {
 }
 
 func printRes(res result) {
-	defer res.resp.Body.Close()
-
 	fmt.Println("Первым ответил:", res.url)
-	fmt.Println("Status:", res.resp.Status)
+	fmt.Println("Status:", res.status)
 
-	for key, values := range res.resp.Header {
+	for key, values := range res.header {
 		for _, value := range values {
 			fmt.Printf("%s: %s\n", key, value)
 		}
@@ -67,11 +77,10 @@ func printRes(res result) {
 
 	fmt.Println()
 
-	_, err := io.Copy(os.Stdout, res.resp.Body)
+	_, err := os.Stdout.Write(res.body)
 	if err != nil {
-		fmt.Println("Ошибка при чтении body:", err)
+		fmt.Println("Ошибка при выводе body:", err)
 	}
-
 }
 
 func main() {
