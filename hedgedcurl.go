@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -69,8 +70,16 @@ func printRes(res result) {
 	fmt.Println("Первым ответил:", res.url)
 	fmt.Println("Status:", res.status)
 
-	for key, values := range res.header {
-		for _, value := range values {
+	keys := make([]string, 0, len(res.header))
+
+	for key := range res.header {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		for _, value := range res.header[key] {
 			fmt.Printf("%s: %s\n", key, value)
 		}
 	}
